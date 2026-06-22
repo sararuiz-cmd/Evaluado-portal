@@ -1,27 +1,728 @@
+/* =====================================================
+   PORTAL DEL EVALUADO - DISEÑO GENERAL
+   Archivo: assets/css/style.css
+===================================================== */
+
+:root {
+    --azul-principal: #003c58;
+    --azul-secundario: #006d8f;
+    --azul-claro: #e7f6fb;
+    --azul-muy-claro: #f2fbfd;
+
+    --dorado: #d6b981;
+    --dorado-suave: #fff4d6;
+
+    --rojo: #dc3545;
+    --rojo-oscuro: #b92332;
+
+    --texto: #10202f;
+    --texto-suave: #526577;
+
+    --gris-fondo: #eef3f7;
+    --borde: #d8e2ea;
+
+    --sombra-suave: 0 12px 30px rgba(0, 60, 88, 0.12);
+    --sombra-fuerte: 0 22px 60px rgba(0, 60, 88, 0.18);
+}
+
+/* =====================================================
+   FONDO GENERAL
+===================================================== */
+
+body {
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--texto);
+}
+
+body.bg-light {
+    background:
+        radial-gradient(circle at top left, rgba(0, 109, 143, 0.18), transparent 30rem),
+        radial-gradient(circle at bottom right, rgba(214, 185, 129, 0.16), transparent 28rem),
+        linear-gradient(135deg, #e8f1f5 0%, #d9e7ed 45%, #f7f9fb 100%) !important;
+}
+
+/* =====================================================
+   LOGIN
+===================================================== */
+
 .login-card {
     width: 100%;
-    max-width: 420px;
-    border-radius: 16px;
+    max-width: 460px;
+    border: 0;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: var(--sombra-fuerte);
+    background: #ffffff;
 }
 
-.pregunta-card {
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    padding: 18px;
-    margin-bottom: 18px;
-    background-color: #ffffff;
+.login-card .card-body {
+    padding: 2.4rem !important;
 }
 
-.pregunta-numero {
-    font-weight: bold;
-    color: #0d6efd;
+.login-card h3 {
+    color: var(--azul-principal);
+    font-weight: 900;
+    font-size: 2rem;
 }
 
-.opcion-label {
-    cursor: pointer;
+.login-card p {
+    color: var(--texto-suave) !important;
+    line-height: 1.5;
+}
+
+.login-card .form-label {
+    font-weight: 700;
+    color: var(--texto);
+}
+
+.login-card .form-control {
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--borde);
+    box-shadow: none;
+    transition: all 0.18s ease-in-out;
+}
+
+.login-card .form-control:focus {
+    border-color: var(--azul-secundario);
+    box-shadow: 0 0 0 0.25rem rgba(0, 109, 143, 0.16);
+}
+
+.login-card .btn-primary {
+    background: linear-gradient(135deg, var(--azul-secundario), var(--azul-principal));
+    border: none;
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    font-weight: 800;
+    box-shadow: 0 10px 22px rgba(0, 109, 143, 0.25);
+    transition: all 0.2s ease-in-out;
+}
+
+.login-card .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(0, 109, 143, 0.35);
+}
+
+/* =====================================================
+   NAVBAR DEL TEST
+===================================================== */
+
+.navbar,
+.test-navbar,
+.navbar.bg-primary {
+    background: linear-gradient(90deg, var(--azul-principal), var(--azul-secundario)) !important;
+    box-shadow: 0 4px 18px rgba(0, 60, 88, 0.25);
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.navbar-brand {
+    font-weight: 900;
+    letter-spacing: 0.3px;
+    font-size: 1.35rem;
+}
+
+#nombreEvaluado {
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.16);
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+}
+
+/* =====================================================
+   CONTENEDOR PRINCIPAL
+===================================================== */
+
+.container {
+    max-width: 1180px;
+}
+
+.container.my-4 {
+    max-width: 1180px;
+}
+
+/* =====================================================
+   BARRA DE TIEMPO
+===================================================== */
+
+.alert-warning,
+.status-panel {
+    background: linear-gradient(90deg, var(--dorado-suave), #ffffff) !important;
+    border: 1px solid #e2c878 !important;
+    color: #5e4710 !important;
+    border-radius: 20px !important;
+    box-shadow: 0 12px 30px rgba(110, 85, 20, 0.16);
+    padding: 1rem 1.25rem;
+}
+
+.alert-warning strong,
+.status-panel strong {
+    color: #4a3506;
+    font-weight: 900;
 }
 
 #temporizador {
-    font-size: 1.2rem;
-    font-weight: bold;
+    display: inline-block;
+    margin-left: 0.4rem;
+    background: var(--azul-principal);
+    color: #ffffff !important;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    font-weight: 900 !important;
+    letter-spacing: 1px;
+}
+
+/* =====================================================
+   BOTÓN FINALIZAR
+===================================================== */
+
+#btnFinalizar {
+    background: linear-gradient(135deg, var(--rojo), var(--rojo-oscuro)) !important;
+    border: none !important;
+    border-radius: 14px !important;
+    font-weight: 800 !important;
+    padding: 0.75rem 1.35rem !important;
+    box-shadow: 0 10px 22px rgba(220, 53, 69, 0.32);
+    transition: all 0.2s ease-in-out;
+}
+
+#btnFinalizar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(220, 53, 69, 0.42);
+}
+
+/* =====================================================
+   TARJETA PRINCIPAL DEL TEST
+===================================================== */
+
+.card.shadow,
+.main-test-card {
+    background: #ffffff !important;
+    border: 0 !important;
+    border-radius: 26px !important;
+    box-shadow: var(--sombra-fuerte) !important;
+    overflow: hidden;
+}
+
+.card.shadow > .card-body,
+.main-test-card .card-body {
+    padding: 2.8rem !important;
+}
+
+/* =====================================================
+   ENCABEZADO DEL TEST
+===================================================== */
+
+#tituloTest {
+    color: var(--azul-principal) !important;
+    font-weight: 900 !important;
+    font-size: 2rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+#tituloTest::after {
+    content: "";
+    display: block;
+    width: 95px;
+    height: 5px;
+    margin-top: 0.75rem;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--dorado), var(--azul-secundario));
+}
+
+.text-muted {
+    color: var(--texto-suave) !important;
+}
+
+/* Badge de cantidad de ítems */
+.badge,
+.rounded-pill {
+    background: linear-gradient(135deg, var(--azul-secundario), var(--azul-principal)) !important;
+    font-weight: 800 !important;
+    padding: 0.65rem 1rem !important;
+    border-radius: 999px !important;
+}
+
+/* =====================================================
+   INSTRUCCIONES
+===================================================== */
+
+#bloqueInstrucciones,
+.instructions-card,
+.alert-info {
+    background: linear-gradient(135deg, var(--azul-claro), #ffffff) !important;
+    border: 1px solid #b5dce8 !important;
+    border-radius: 20px !important;
+    padding: 1.35rem 1.5rem !important;
+    margin-top: 1.7rem !important;
+    margin-bottom: 2.2rem !important;
+    box-shadow: 0 8px 20px rgba(0, 60, 88, 0.08);
+    color: var(--texto) !important;
+}
+
+#bloqueInstrucciones strong,
+.instructions-card strong,
+.alert-info strong {
+    color: var(--azul-principal) !important;
+    font-size: 1.05rem;
+    font-weight: 900;
+}
+
+#instruccionesTest {
+    line-height: 1.8 !important;
+    color: #253746 !important;
+    font-size: 1.03rem !important;
+}
+
+/* =====================================================
+   CONTENEDOR DE PREGUNTAS
+===================================================== */
+
+#contenedorPreguntas {
+    margin-top: 2rem !important;
+}
+
+/* Compatible con preguntas generadas como div simple o como card */
+#contenedorPreguntas > div,
+#contenedorPreguntas .card {
+    background: linear-gradient(180deg, #ffffff, #f9fcfd) !important;
+    border: 1px solid var(--borde) !important;
+    border-left: 8px solid var(--azul-secundario) !important;
+    border-radius: 22px !important;
+    padding: 1.6rem 1.8rem !important;
+    margin-bottom: 1.5rem !important;
+    box-shadow: 0 14px 32px rgba(0, 60, 88, 0.12) !important;
+    transition: all 0.2s ease-in-out;
+}
+
+#contenedorPreguntas > div:hover,
+#contenedorPreguntas .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 38px rgba(0, 60, 88, 0.18) !important;
+}
+
+/* Número del ítem si aparece suelto */
+#contenedorPreguntas > div > :first-child {
+    color: var(--azul-secundario) !important;
+    font-weight: 900 !important;
+}
+
+/* Títulos del ítem */
+#contenedorPreguntas h5,
+#contenedorPreguntas .fw-semibold {
+    color: var(--azul-principal) !important;
+    font-weight: 900 !important;
+}
+
+/* Enunciado */
+#contenedorPreguntas p {
+    font-size: 1.13rem !important;
+    color: var(--texto) !important;
+    font-weight: 650 !important;
+    margin-bottom: 1.2rem !important;
+}
+
+/* =====================================================
+   OPCIONES
+===================================================== */
+
+#contenedorPreguntas .form-check {
+    background: #f4f9fb !important;
+    border: 1px solid #d6e4ea !important;
+    border-radius: 16px !important;
+    padding: 0.85rem 1rem 0.85rem 2.8rem !important;
+    margin-bottom: 0.75rem !important;
+    transition: all 0.18s ease-in-out;
+}
+
+#contenedorPreguntas .form-check:hover {
+    background: var(--azul-claro) !important;
+    border-color: #8fc8d8 !important;
+    cursor: pointer;
+    transform: translateX(3px);
+}
+
+#contenedorPreguntas .form-check-input {
+    width: 1.15rem !important;
+    height: 1.15rem !important;
+    margin-left: -1.9rem !important;
+    margin-top: 0.25rem !important;
+    cursor: pointer;
+}
+
+#contenedorPreguntas .form-check-input:checked {
+    background-color: var(--azul-secundario) !important;
+    border-color: var(--azul-secundario) !important;
+}
+
+#contenedorPreguntas .form-check-label {
+    width: 100%;
+    color: #1b2d3d !important;
+    font-size: 1.02rem !important;
+    cursor: pointer;
+}
+
+/* Opción seleccionada */
+#contenedorPreguntas .form-check:has(.form-check-input:checked) {
+    background: linear-gradient(90deg, #dff5fb, #ffffff) !important;
+    border-color: var(--azul-secundario) !important;
+    box-shadow: 0 8px 18px rgba(0, 109, 143, 0.18);
+}
+
+/* =====================================================
+   ALERTAS
+===================================================== */
+
+.alert {
+    border-radius: 16px;
+}
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media (max-width: 768px) {
+    .login-card .card-body {
+        padding: 1.7rem !important;
+    }
+
+    .card.shadow > .card-body,
+    .main-test-card .card-body {
+        padding: 1.4rem !important;
+    }
+
+    #tituloTest {
+        font-size: 1.55rem !important;
+    }
+
+    .alert-warning,
+    .status-panel {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 1rem;
+    }
+
+    #btnFinalizar {
+        width: 100%;
+    }
+
+    #nombreEvaluado {
+        display: none;
+    }
+
+    #contenedorPreguntas > div,
+    #contenedorPreguntas .card {
+        padding: 1.25rem !important;
+    }
+}
+/* =========================================
+   CORRECCIÓN DE ALINEACIÓN DE RESPUESTAS
+   Pegar al final de assets/css/style.css
+========================================= */
+
+#contenedorPreguntas .form-check {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+
+    background: #f4f9fb !important;
+    border: 1px solid #d6e4ea !important;
+    border-radius: 16px !important;
+
+    padding: 0.85rem 1rem !important;
+    margin-bottom: 0.75rem !important;
+
+    min-height: 48px;
+    transition: all 0.18s ease-in-out;
+}
+
+#contenedorPreguntas .form-check:hover {
+    background: #e7f6fb !important;
+    border-color: #8fc8d8 !important;
+    cursor: pointer;
+    transform: translateX(3px);
+}
+
+#contenedorPreguntas .form-check-input {
+    position: static !important;
+    float: none !important;
+
+    width: 1.15rem !important;
+    height: 1.15rem !important;
+
+    margin: 0 !important;
+    flex-shrink: 0;
+
+    cursor: pointer;
+}
+
+#contenedorPreguntas .form-check-label {
+    margin: 0 !important;
+    padding: 0 !important;
+
+    width: 100%;
+    color: #1b2d3d !important;
+    font-size: 1.02rem !important;
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+#contenedorPreguntas .form-check-input:checked {
+    background-color: #006d8f !important;
+    border-color: #006d8f !important;
+}
+
+#contenedorPreguntas .form-check:has(.form-check-input:checked) {
+    background: linear-gradient(90deg, #dff5fb, #ffffff) !important;
+    border-color: #006d8f !important;
+    box-shadow: 0 8px 18px rgba(0, 109, 143, 0.18);
+}
+/* =====================================================
+   LOGIN CON PANEL IZQUIERDO CELESTE
+   Compatible con index.html actual
+===================================================== */
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+.login-page {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top left, rgba(0, 109, 143, 0.18), transparent 32rem),
+        radial-gradient(circle at bottom right, rgba(214, 185, 129, 0.16), transparent 28rem),
+        linear-gradient(135deg, #eef6f9 0%, #dfeaf0 45%, #f7f9fb 100%) !important;
+    color: #10202f;
+}
+
+.login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 980px;
+    min-height: 590px;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    background: #ffffff;
+    border-radius: 32px;
+    overflow: hidden;
+    box-shadow: 0 24px 70px rgba(0, 60, 88, 0.22);
+}
+
+/* Panel izquierdo */
+.login-side {
+    background:
+        linear-gradient(135deg, rgba(0, 60, 88, 0.96), rgba(0, 109, 143, 0.94)),
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.25), transparent 18rem);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    padding: 3rem;
+}
+
+.login-side-content {
+    max-width: 430px;
+}
+
+.brand-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.16);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.8rem;
+    box-shadow: 0 18px 35px rgba(0, 0, 0, 0.18);
+}
+
+.brand-icon i {
+    font-size: 2.3rem;
+    color: #ffffff;
+}
+
+.login-side h1 {
+    font-size: 2.45rem;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+}
+
+.login-side p {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.88);
+    margin-bottom: 2rem;
+}
+
+.login-info-box {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    background: rgba(255, 255, 255, 0.13);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 18px;
+    padding: 0.95rem 1rem;
+    margin-bottom: 0.85rem;
+}
+
+.login-info-box i {
+    font-size: 1.25rem;
+    color: #ffffff;
+}
+
+.login-info-box span {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.94);
+}
+
+/* Panel derecho */
+.login-form-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2.6rem;
+    background: #ffffff;
+}
+
+.login-form-card {
+    width: 100%;
+    max-width: 390px;
+}
+
+.form-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    background: #e7f6fb;
+    color: #006d8f;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.form-icon i {
+    font-size: 1.7rem;
+}
+
+.login-form-card h2 {
+    color: #003c58;
+    font-size: 2rem;
+    font-weight: 900;
+    margin-bottom: 0.6rem;
+}
+
+.login-form-card .text-muted {
+    color: #5d6d7e !important;
+    line-height: 1.55;
+}
+
+.login-form-card .form-label {
+    font-weight: 800;
+    color: #10202f;
+    margin-bottom: 0.45rem;
+}
+
+.custom-input-group {
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px #d8e2ea;
+    transition: all 0.18s ease-in-out;
+    background: #ffffff;
+}
+
+.custom-input-group:focus-within {
+    box-shadow: 0 0 0 4px rgba(0, 109, 143, 0.15);
+}
+
+.custom-input-group .input-group-text {
+    border: none;
+    background: #f5f9fc;
+    color: #003c58;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.custom-input-group .form-control {
+    border: none;
+    padding: 0.95rem 1rem;
+    box-shadow: none;
+}
+
+.custom-input-group .form-control:focus {
+    box-shadow: none;
+}
+
+.btn-login {
+    background: linear-gradient(135deg, #007c9d, #003c58);
+    color: #ffffff;
+    border: none;
+    border-radius: 16px;
+    padding: 0.95rem 1rem;
+    font-weight: 900;
+    font-size: 1.05rem;
+    box-shadow: 0 14px 28px rgba(0, 109, 143, 0.28);
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-login:hover {
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 18px 34px rgba(0, 109, 143, 0.38);
+}
+
+.login-note {
+    text-align: center;
+    color: #5d6d7e;
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .login-container {
+        grid-template-columns: 1fr;
+        max-width: 520px;
+    }
+
+    .login-side {
+        padding: 2.2rem;
+        min-height: 280px;
+    }
+
+    .login-side h1 {
+        font-size: 2rem;
+    }
+
+    .login-form-panel {
+        padding: 2.2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .login-wrapper {
+        padding: 1rem;
+    }
+
+    .login-container {
+        border-radius: 24px;
+    }
+
+    .login-side {
+        padding: 1.8rem;
+    }
+
+    .login-form-panel {
+        padding: 1.8rem;
+    }
 }

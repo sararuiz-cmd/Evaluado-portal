@@ -175,30 +175,30 @@ async function calcularYGuardarResultado(client, idAplicacion) {
         `SELECT
             t.tipo_test,
 
-            COUNT(*) FILTER (
+            COUNT(i.id_item) FILTER (
                 WHERE r.respuesta_seleccionada = i.respuesta_correcta
             ) AS aciertos
 
-         FROM aplicacion_respuestas r
-
-         INNER JOIN aplicaciontest a
-            ON r.aplicaciontest_idaplicacion = a.idaplicacion
+         FROM aplicaciontest a
 
          INNER JOIN tests_razonamiento t
             ON a.testrazonamiento_id_test = t.id_test
 
          INNER JOIN items_razonamiento i
             ON i.id_test_fk = t.id_test
-           AND i.numero = r.numero_item
 
-         WHERE r.aplicaciontest_idaplicacion = $1
+         LEFT JOIN aplicacion_respuestas r
+            ON r.aplicaciontest_idaplicacion = a.idaplicacion
+           AND r.numero_item = i.numero
+
+         WHERE a.idaplicacion = $1
 
          GROUP BY t.tipo_test`,
         [idAplicacion]
     );
 
     if (resultado.rows.length === 0) {
-        throw new Error("No se pudieron calcular los resultados de la aplicación.");
+        throw new Error("No se encontró la aplicación o el test no tiene ítems.");
     }
 
     const tipoTest = resultado.rows[0].tipo_test;
@@ -208,14 +208,20 @@ async function calcularYGuardarResultado(client, idAplicacion) {
     let r2 = 0;
     let rt = 0;
 
+    /*
+     * IMPORTANTE:
+     * Si solo se aplicó Forma A, NO se guarda RT.
+     * Si solo se aplicó Forma B, NO se guarda RT.
+     * Como la BD tiene NOT NULL, se guarda 0 en RT.
+     */
     if (tipoTest === "A") {
         r1 = aciertos;
         r2 = 0;
-        rt = r1;
+        rt = 0;
     } else if (tipoTest === "B") {
         r1 = 0;
         r2 = aciertos;
-        rt = r2;
+        rt = 0;
     } else {
         throw new Error("Tipo de test no válido.");
     }
@@ -227,17 +233,29 @@ async function calcularYGuardarResultado(client, idAplicacion) {
                 aciertos,
                 r1,
                 r2,
-                rt
+                rt,
+                percentil_r1,
+                percentil_r2,
+                percentil_rt,
+                baremo_r1_id,
+                baremo_r2_id,
+                baremo_rt_id
             )
          VALUES
-            ($1, $2, $3, $4, $5)
+            ($1, $2, $3, $4, $5, NULL, NULL, NULL, NULL, NULL, NULL)
 
          ON CONFLICT (aplicacion_idaplicacion)
          DO UPDATE SET
             aciertos = EXCLUDED.aciertos,
             r1 = EXCLUDED.r1,
             r2 = EXCLUDED.r2,
-            rt = EXCLUDED.rt`,
+            rt = EXCLUDED.rt,
+            percentil_r1 = NULL,
+            percentil_r2 = NULL,
+            percentil_rt = NULL,
+            baremo_r1_id = NULL,
+            baremo_r2_id = NULL,
+            baremo_rt_id = NULL`,
         [
             idAplicacion,
             aciertos,
@@ -247,6 +265,41 @@ async function calcularYGuardarResultado(client, idAplicacion) {
         ]
     );
 }
+
+// RECALCULAR RESULTADO MANUALMENTE
+app.get("/api/recalcular/:idAplicacion", async (req, res) => {
+    const { idAplicacion } = req.params;
+
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+
+        await calcularYGuardarResultado(client, idAplicacion);
+
+        await client.query("COMMIT");
+
+        return res.json({
+            ok: true,
+            mensaje: "Resultado recalculado correctamente.",
+            idAplicacion: Number(idAplicacion)
+        });
+
+    } catch (error) {
+        await client.query("ROLLBACK");
+
+        console.error("Error al recalcular resultado:", error);
+
+        return res.status(500).json({
+            ok: false,
+            mensaje: "No se pudo recalcular el resultado.",
+            error: error.message
+        });
+
+    } finally {
+        client.release();
+    }
+});
 
 // GUARDAR RESPUESTAS
 app.post("/api/respuestas", async (req, res) => {
