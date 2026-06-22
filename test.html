@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Test de Razonamiento</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-primary">
+    <div class="container">
+        <span class="navbar-brand">Test de Razonamiento</span>
+        <span class="text-white" id="nombreEvaluado"></span>
+    </div>
+</nav>
+
+<div class="container my-4">
+
+    <div class="alert alert-warning d-flex justify-content-between align-items-center">
+        <div>
+            <strong>Tiempo restante:</strong>
+            <span id="temporizador">--:--</span>
+        </div>
+
+        <button class="btn btn-danger btn-sm" id="btnFinalizar">
+            Finalizar test
+        </button>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <h4 id="tituloTest" class="mb-3">Cargando test...</h4>
+
+            <div class="alert alert-info" id="bloqueInstrucciones">
+                <strong>Instrucciones:</strong>
+                <p id="instruccionesTest" class="mb-0 mt-2"></p>
+            </div>
+
+            <form id="testForm">
+                <div id="contenedorPreguntas"></div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    const API_BASE_URL = "http://localhost:3000/api";
+
+    let idAplicacion = null;
+    let tiempoRestante = 0;
+    let intervalo = null;
+    let items = [];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        const params = new URLSearchParams(window.location.search);
+
+        idAplicacion = localStorage.getItem("idAplicacion") || params.get("idAplicacion");
+        const nombreEvaluado = localStorage.getItem("nombreEvaluado") || "Evaluado";
+
+        if (!idAplicacion) {
+            Swal.fire({
+                icon: "warning",
+                title: "Sesión no encontrada",
+                text: "Debe iniciar sesión nuevamente."
+            }).then(() => {
+                window.location.href = "index.html";
+            });
+            return;
+        }
+
+        document.getElementById("nombreEvaluado").textContent = nombreEvaluado;
+
+        await cargarTest();
+
+        document.getElementById("btnFinalizar").addEventListener("click", () => {
+            confirmarFinalizar();
+        });
+    });
+
+    async function cargarTest() {
+        try {
+            const respuesta = await fetch(`${API_BASE_URL}/test/${idAplicacion}`);
+            const data = await respuesta.json();
+
+            if (!data.ok) {
+                Swal.fire("Error", data.mensaje, "error");
+                return;
+            }
+
+            items = data.items || [];
+
+            document.getElementById("tituloTest").textContent =
+                `Razonamiento Forma ${data.tipoTest}`;
+
+            document.getElementById("instruccionesTest").textContent =
+                data.instrucciones || "Sin instrucciones registradas.";
+
+            renderizarPreguntas(items);
+
+            tiempoRestante = Number(data.tiempoMinutos) * 60;
+
+            if (tiempoRestante <= 0) {
+                Swal.fire("Error", "El test no tiene tiempo asignado.", "error");
+                return;
+            }
+
+            iniciarTemporizador();
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire(
+                "Error",
+                "No se pudo cargar el test desde PostgreSQL.",
+                "error"
+            );
+        }
+    }
+
+    function renderizarPreguntas(listaItems) {
+        const contenedor = document.getElementById("contenedorPreguntas");
+        contenedor.innerHTML = "";
+
+        if (!listaItems || listaItems.length === 0) {
+            contenedor.innerHTML = `
+                <div class="alert alert-warning">
+                    Este test no tiene ítems registrados en OpenXava.
+                </div>
+            `;
+            return;
+        }
+
+        listaItems.forEach((item) => {
+            const card = document.createElement("div");
+            card.className = "card mb-3";
+
+            card.innerHTML = `
+                <div class="card-body">
+                    <h5 class="mb-3">Ítem ${item.numero}</h5>
+                    <p class="fw-semibold">${item.enunciado}</p>
+
+                    ${crearOpcion(item.numero, "A", item.opcion_a)}
+                    ${crearOpcion(item.numero, "B", item.opcion_b)}
+                    ${crearOpcion(item.numero, "C", item.opcion_c)}
+                    ${crearOpcion(item.numero, "D", item.opcion_d)}
+                </div>
+            `;
+
+            contenedor.appendChild(card);
+        });
+    }
+
+    function crearOpcion(numeroItem, letra, texto) {
+        return `
+            <div class="form-check mb-2">
+                <input 
+                    class="form-check-input" 
+                    type="radio" 
+                    name="item_${numeroItem}" 
+                    id="item_${numeroItem}_${letra}" 
+                    value="${letra}"
+                >
+                <label class="form-check-label" for="item_${numeroItem}_${letra}">
+                    ${letra}) ${texto}
+                </label>
+            </div>
+        `;
+    }
+
+    function iniciarTemporizador() {
+        actualizarTemporizador();
+
+        intervalo = setInterval(() => {
+            tiempoRestante--;
+            actualizarTemporizador();
+
+            if (tiempoRestante <= 0) {
+                clearInterval(intervalo);
+                finalizarTest(true);
+            }
+        }, 1000);
+    }
+
+    function actualizarTemporizador() {
+        const minutos = Math.floor(tiempoRestante / 60);
+        const segundos = tiempoRestante % 60;
+
+        document.getElementById("temporizador").textContent =
+            `${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
+    }
+
+    function confirmarFinalizar() {
+        Swal.fire({
+            icon: "question",
+            title: "¿Finalizar test?",
+            text: "Después de finalizar no podrá cambiar sus respuestas.",
+            showCancelButton: true,
+            confirmButtonText: "Sí, finalizar",
+            cancelButtonText: "Cancelar"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                finalizarTest(false);
+            }
+        });
+    }
+
+    async function finalizarTest(porTiempo) {
+        clearInterval(intervalo);
+
+        const respuestas = items.map((item) => {
+            const seleccionada = document.querySelector(
+                `input[name="item_${item.numero}"]:checked`
+            );
+
+            return {
+                numeroItem: item.numero,
+                respuestaSeleccionada: seleccionada ? seleccionada.value : null
+            };
+        });
+
+        try {
+            const respuesta = await fetch(`${API_BASE_URL}/respuestas`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    idAplicacion: Number(idAplicacion),
+                    respuestas: respuestas
+                })
+            });
+
+            const data = await respuesta.json();
+
+            if (!data.ok) {
+                Swal.fire("Error", data.mensaje, "error");
+                return;
+            }
+
+            localStorage.clear();
+
+            Swal.fire({
+                icon: "success",
+                title: porTiempo ? "Tiempo finalizado" : "Test finalizado",
+                text: "Sus respuestas fueron guardadas correctamente."
+            }).then(() => {
+                window.location.href = "index.html";
+            });
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire(
+                "Error",
+                "No se pudieron guardar las respuestas.",
+                "error"
+            );
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Portal del Evaluado</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body class="bg-light">
+
+<div class="container vh-100 d-flex justify-content-center align-items-center">
+    <div class="card shadow login-card">
+        <div class="card-body p-4">
+
+            <h3 class="text-center mb-3">Portal del Evaluado</h3>
+
+            <p class="text-center text-muted">
+                Ingrese sus credenciales para realizar el test asignado.
+            </p>
+
+            <form id="loginForm" autocomplete="off">
+                <div class="mb-3">
+                    <label for="usuario" class="form-label">Usuario</label>
+                    <input
+                            type="text"
+                            class="form-control"
+                            id="usuario"
+                            required
+                    >
+                </div>
+
+                <div class="mb-3">
+                    <label for="contrasena" class="form-label">Contraseña</label>
+                    <input
+                            type="password"
+                            class="form-control"
+                            id="contrasena"
+                            required
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    Iniciar sesión
+                </button>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    const API_BASE_URL = "http://localhost:3000/api";
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("loginForm");
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const usuario = document.getElementById("usuario").value.trim();
+            const contrasena = document.getElementById("contrasena").value.trim();
+
+            if (!usuario || !contrasena) {
+                Swal.fire("Campos vacíos", "Ingrese usuario y contraseña.", "warning");
+                return;
+            }
+
+            try {
+                const respuesta = await fetch(`${API_BASE_URL}/login`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        usuario: usuario,
+                        contrasena: contrasena
+                    })
+                });
+
+                const data = await respuesta.json();
+
+                if (!data.ok) {
+                    Swal.fire("Acceso denegado", data.mensaje, "error");
+                    return;
+                }
+
+                localStorage.setItem("idEvaluado", data.idEvaluado);
+                localStorage.setItem("idAplicacion", data.idAplicacion);
+                localStorage.setItem("nombreEvaluado", data.nombreEvaluado);
+
+                window.location.href = "test.html";
+
+            } catch (error) {
+                console.error("Error en login:", error);
+
+                Swal.fire(
+                    "Error de conexión",
+                    "No se pudo conectar con el servidor Node en http://localhost:3000.",
+                    "error"
+                );
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
