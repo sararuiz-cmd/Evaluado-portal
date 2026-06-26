@@ -332,7 +332,7 @@ async function finalizarTest(porTiempo) {
 
         const data = await respuesta.json();
 
-        console.log("Respuesta al finalizar test:", data);
+        console.log("=== RESPUESTA AL FINALIZAR TEST ===", JSON.stringify(data));
 
         if (!data.ok) {
             guardandoFinalizacion = false;
@@ -359,6 +359,11 @@ async function finalizarTest(porTiempo) {
                 text: data.mensaje || "Ahora continuará con el siguiente test.",
                 confirmButtonText: "Continuar"
             });
+
+            if (data.siguienteAplicacion && data.idAplicacionSiguiente) {
+                idAplicacion = String(data.idAplicacionSiguiente);
+                localStorage.setItem("idAplicacion", idAplicacion);
+            }
 
             items = [];
             tiempoRestante = 0;

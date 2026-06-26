@@ -394,19 +394,42 @@
 
             if (!data.ok) {
                 Swal.fire("Error", data.mensaje, "error");
+                if (!porTiempo) {
+                    iniciarTemporizador();
+                }
                 return;
             }
 
             localStorage.removeItem(`respuestasTemporales_${idAplicacion}`);
+
+            if (data.siguienteTest === true) {
+                if (data.siguienteAplicacion && data.idAplicacionSiguiente) {
+                    idAplicacion = String(data.idAplicacionSiguiente);
+                    localStorage.setItem("idAplicacion", idAplicacion);
+                }
+
+                await Swal.fire({
+                    icon: "success",
+                    title: porTiempo ? "Tiempo finalizado" : "Test guardado",
+                    text: data.mensaje || "Ahora continuará con el siguiente test.",
+                    confirmButtonText: "Continuar"
+                });
+
+                items = [];
+                tiempoRestante = 0;
+                await cargarTest();
+                return;
+            }
+
             localStorage.clear();
 
-            Swal.fire({
+            await Swal.fire({
                 icon: "success",
-                title: porTiempo ? "Tiempo finalizado" : "Test finalizado",
+                title: porTiempo ? "Tiempo finalizado" : "Evaluación finalizada",
                 text: "Sus respuestas fueron guardadas correctamente."
-            }).then(() => {
-                window.location.href = "index.html";
             });
+
+            window.location.href = "index.html";
 
         } catch (error) {
             console.error("Error al guardar respuestas:", error);
@@ -416,6 +439,10 @@
                 "No se pudieron guardar las respuestas en PostgreSQL.",
                 "error"
             );
+
+            if (!porTiempo) {
+                iniciarTemporizador();
+            }
         }
     }
 </script>

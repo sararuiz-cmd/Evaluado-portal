@@ -17,7 +17,7 @@ const pool = new Pool({
     port: 5432,
     database: "razonamiento_db",
     user: "postgres",
-    password: "123"
+    password: "Alvaro12@"
 });
 
 // ===============================
@@ -475,8 +475,9 @@ app.post("/api/respuestas", async (req, res) => {
         }
 
         const aplicacionResult = await client.query(
-            `SELECT 
-                indice_test_actual
+            `SELECT
+                indice_test_actual,
+                evaluado_id_evaluado
              FROM aplicaciontest
              WHERE idaplicacion = $1`,
             [idAplicacion]
@@ -495,6 +496,9 @@ app.post("/api/respuestas", async (req, res) => {
 
         const indiceActual = Number(aplicacionResult.rows[0].indice_test_actual || 0);
         const totalTests = Number(totalTestsResult.rows[0].total || 0);
+        const idEvaluado = aplicacionResult.rows[0].evaluado_id_evaluado;
+
+        console.log(`[RESPUESTAS] idAplicacion=${idAplicacion} indiceActual=${indiceActual} totalTests=${totalTests} idEvaluado=${idEvaluado}`);
 
         if (totalTests === 0) {
             throw new Error("La aplicación no tiene tests asignados.");
@@ -536,7 +540,39 @@ app.post("/api/respuestas", async (req, res) => {
 
         await calcularYGuardarResultado(client, idAplicacion);
 
+        let idAplicacionSiguiente = null;
+
+        if (idEvaluado) {
+            const siguienteAppResult = await client.query(
+                `SELECT idaplicacion
+                 FROM aplicaciontest
+                 WHERE evaluado_id_evaluado = $1
+                 AND idaplicacion <> $2
+                 AND estado <> 'FINALIZADA'
+                 ORDER BY idaplicacion ASC
+                 LIMIT 1`,
+                [idEvaluado, idAplicacion]
+            );
+
+            if (siguienteAppResult.rows.length > 0) {
+                idAplicacionSiguiente = siguienteAppResult.rows[0].idaplicacion;
+            }
+        }
+
         await client.query("COMMIT");
+
+        console.log(`[RESPUESTAS] idAplicacionSiguiente=${idAplicacionSiguiente}`);
+
+        if (idAplicacionSiguiente !== null) {
+            return res.json({
+                ok: true,
+                finalizada: false,
+                siguienteTest: true,
+                siguienteAplicacion: true,
+                idAplicacionSiguiente: idAplicacionSiguiente,
+                mensaje: "Respuestas guardadas. Continúe con el siguiente test."
+            });
+        }
 
         return res.json({
             ok: true,
