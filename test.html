@@ -5,9 +5,14 @@
     <title>Test de Razonamiento</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css">
+
+    <!-- CSS propio -->
+    <link rel="stylesheet" href="./assets/css/style.css?v=300">
 </head>
 
 <body class="test-bg">
@@ -39,8 +44,11 @@
                     <div class="timer-icon">
                         <i class="bi bi-stopwatch"></i>
                     </div>
+
                     <div>
-                        <div class="text-muted small fw-semibold text-uppercase">Tiempo restante</div>
+                        <div class="text-muted small fw-semibold text-uppercase">
+                            Tiempo restante
+                        </div>
                         <div id="temporizador" class="timer-text">--:--</div>
                     </div>
                 </div>
@@ -56,12 +64,16 @@
 
     <div class="card border-0 shadow-lg main-test-card">
         <div class="card-body p-4 p-lg-5">
+
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
                 <div>
                     <span class="section-label">Evaluación asignada</span>
                     <h4 id="tituloTest" class="fw-bold mb-1">Cargando test...</h4>
-                    <p class="text-muted mb-0">Seleccione una respuesta por cada ítem.</p>
+                    <p class="text-muted mb-0">
+                        Seleccione una respuesta por cada ítem.
+                    </p>
                 </div>
+
                 <div class="text-lg-end">
                     <span class="badge rounded-pill text-bg-primary px-3 py-2" id="contadorPreguntas">
                         Cargando ítems
@@ -74,6 +86,7 @@
                     <div class="instructions-icon">
                         <i class="bi bi-info-circle"></i>
                     </div>
+
                     <div>
                         <strong>Instrucciones</strong>
                         <p id="instruccionesTest" class="mb-0 mt-2"></p>
@@ -84,6 +97,7 @@
             <form id="testForm">
                 <div id="contenedorPreguntas"></div>
             </form>
+
         </div>
     </div>
 
@@ -100,6 +114,8 @@
     let items = [];
 
     document.addEventListener("DOMContentLoaded", async () => {
+        console.log("test.html ejecutando JavaScript correctamente");
+
         const params = new URLSearchParams(window.location.search);
 
         idAplicacion = localStorage.getItem("idAplicacion") || params.get("idAplicacion");
@@ -120,18 +136,31 @@
 
         await cargarTest();
 
-        document.getElementById("btnFinalizar").addEventListener("click", () => {
-            confirmarFinalizar();
-        });
+        document.getElementById("btnFinalizar").addEventListener("click", confirmarFinalizar);
     });
 
     async function cargarTest() {
         try {
-            const respuesta = await fetch(`${API_BASE_URL}/test/${idAplicacion}`);
+            const respuesta = await fetch(
+                `${API_BASE_URL}/test/${idAplicacion}?t=${Date.now()}`,
+                {
+                    method: "GET",
+                    cache: "no-store"
+                }
+            );
+
+            if (!respuesta.ok) {
+                throw new Error("No se pudo conectar con el servidor Node.");
+            }
+
             const data = await respuesta.json();
 
+            console.log("Datos recibidos desde Node:", data);
+
             if (!data.ok) {
-                Swal.fire("Error", data.mensaje, "error");
+                Swal.fire("Error", data.mensaje, "error").then(() => {
+                    window.location.href = "index.html";
+                });
                 return;
             }
 
@@ -143,22 +172,41 @@
             document.getElementById("instruccionesTest").textContent =
                 data.instrucciones || "Sin instrucciones registradas.";
 
-            renderizarPreguntas(items);
+            document.getElementById("contadorPreguntas").textContent =
+                `${items.length} ítems`;
 
-            tiempoRestante = Number(data.tiempoMinutos) * 60;
+            renderizarPreguntas(items);
+            restaurarRespuestasTemporales();
+
+            /*
+             * Aquí está la corrección:
+             * Se usa el tiempo restante calculado por PostgreSQL.
+             * NO se reinicia con data.tiempoMinutos * 60.
+             */
+            tiempoRestante = Number(
+                data.tiempoRestanteSegundos ?? (data.tiempoMinutos * 60)
+            );
+
+            tiempoRestante = Math.max(0, tiempoRestante);
 
             if (tiempoRestante <= 0) {
-                Swal.fire("Error", "El test no tiene tiempo asignado.", "error");
+                actualizarTemporizador();
+                Swal.fire({
+                    icon: "warning",
+                    title: "Tiempo finalizado",
+                    text: "El tiempo del test ha terminado."
+                }).then(() => finalizarTest(true));
                 return;
             }
 
             iniciarTemporizador();
 
         } catch (error) {
-            console.error(error);
+            console.error("Error al cargar test:", error);
+
             Swal.fire(
                 "Error",
-                "No se pudo cargar el test desde PostgreSQL.",
+                "No se pudo cargar el test desde PostgreSQL. Verifique que Node esté ejecutándose en localhost:3000.",
                 "error"
             );
         }
@@ -166,11 +214,9 @@
 
     function renderizarPreguntas(listaItems) {
         const contenedor = document.getElementById("contenedorPreguntas");
-        const contador = document.getElementById("contadorPreguntas");
         contenedor.innerHTML = "";
 
         if (!listaItems || listaItems.length === 0) {
-            contador.textContent = "0 ítems";
             contenedor.innerHTML = `
                 <div class="alert alert-warning rounded-4">
                     <i class="bi bi-exclamation-triangle me-2"></i>
@@ -179,8 +225,6 @@
             `;
             return;
         }
-
-        contador.textContent = `${listaItems.length} ítems`;
 
         listaItems.forEach((item, index) => {
             const card = document.createElement("div");
@@ -205,6 +249,8 @@
 
             contenedor.appendChild(card);
         });
+
+        activarGuardadoTemporal();
     }
 
     function crearOpcion(numeroItem, letra, texto) {
@@ -226,10 +272,17 @@
     }
 
     function iniciarTemporizador() {
+        clearInterval(intervalo);
+
         actualizarTemporizador();
 
         intervalo = setInterval(() => {
             tiempoRestante--;
+
+            if (tiempoRestante < 0) {
+                tiempoRestante = 0;
+            }
+
             actualizarTemporizador();
 
             if (tiempoRestante <= 0) {
@@ -247,11 +300,60 @@
             `${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
     }
 
+    function activarGuardadoTemporal() {
+        const radios = document.querySelectorAll("#contenedorPreguntas input[type='radio']");
+
+        radios.forEach((radio) => {
+            radio.addEventListener("change", guardarRespuestasTemporales);
+        });
+    }
+
+    function guardarRespuestasTemporales() {
+        const respuestasTemporales = {};
+
+        items.forEach((item) => {
+            const seleccionada = document.querySelector(
+                `input[name="item_${item.numero}"]:checked`
+            );
+
+            respuestasTemporales[item.numero] = seleccionada ? seleccionada.value : null;
+        });
+
+        localStorage.setItem(
+            `respuestasTemporales_${idAplicacion}`,
+            JSON.stringify(respuestasTemporales)
+        );
+    }
+
+    function restaurarRespuestasTemporales() {
+        const guardadas = localStorage.getItem(`respuestasTemporales_${idAplicacion}`);
+
+        if (!guardadas) {
+            return;
+        }
+
+        const respuestasTemporales = JSON.parse(guardadas);
+
+        Object.keys(respuestasTemporales).forEach((numeroItem) => {
+            const valor = respuestasTemporales[numeroItem];
+
+            if (!valor) {
+                return;
+            }
+
+            const radio = document.getElementById(`item_${numeroItem}_${valor}`);
+
+            if (radio) {
+                radio.checked = true;
+            }
+        });
+    }
+
     function confirmarFinalizar() {
         Swal.fire({
             icon: "question",
             title: "¿Finalizar test?",
-            text: "Después de finalizar no podrá cambiar sus respuestas.",
+            text: "Después de finalizar no podrá modificar sus respuestas.",
             showCancelButton: true,
             confirmButtonText: "Sí, finalizar",
             cancelButtonText: "Cancelar"
@@ -295,6 +397,7 @@
                 return;
             }
 
+            localStorage.removeItem(`respuestasTemporales_${idAplicacion}`);
             localStorage.clear();
 
             Swal.fire({
@@ -306,10 +409,11 @@
             });
 
         } catch (error) {
-            console.error(error);
+            console.error("Error al guardar respuestas:", error);
+
             Swal.fire(
                 "Error",
-                "No se pudieron guardar las respuestas.",
+                "No se pudieron guardar las respuestas en PostgreSQL.",
                 "error"
             );
         }

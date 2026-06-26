@@ -9,7 +9,9 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// Conexión a PostgreSQL local
+// ===============================
+// CONEXIÓN A POSTGRESQL
+// ===============================
 const pool = new Pool({
     host: "localhost",
     port: 5432,
@@ -18,11 +20,38 @@ const pool = new Pool({
     password: "123"
 });
 
+// ===============================
+// UTILIDADES
+// ===============================
 function sha256(texto) {
     return crypto.createHash("sha256").update(texto).digest("hex");
 }
 
-// LOGIN
+function esRazonamientoA(test) {
+    const codigo = String(test.codigo || "").toUpperCase();
+    const nombre = String(test.nombre || "").toUpperCase();
+
+    return codigo === "A" || nombre.includes("RAZONAMIENTO A");
+}
+
+function esRazonamientoB(test) {
+    const codigo = String(test.codigo || "").toUpperCase();
+    const nombre = String(test.nombre || "").toUpperCase();
+
+    return codigo === "B" || nombre.includes("RAZONAMIENTO B");
+}
+
+function normalizarRespuesta(respuesta) {
+    if (!respuesta) {
+        return null;
+    }
+
+    return String(respuesta).trim().toUpperCase();
+}
+
+// ===============================
+// LOGIN DEL EVALUADO
+// ===============================
 app.post("/api/login", async (req, res) => {
     const { usuario, contrasena } = req.body;
 
@@ -37,7 +66,11 @@ app.post("/api/login", async (req, res) => {
 
     try {
         const evaluadoResult = await pool.query(
-            `SELECT id_evaluado, nombres, apellidos, usuario
+            `SELECT 
+                id_evaluado, 
+                nombres, 
+                apellidos, 
+                usuario
              FROM evaluados
              WHERE usuario = $1
              AND contrasena = $2`,
@@ -54,7 +87,8 @@ app.post("/api/login", async (req, res) => {
         const evaluado = evaluadoResult.rows[0];
 
         const aplicacionResult = await pool.query(
-            `SELECT idaplicacion
+            `SELECT 
+                idaplicacion
              FROM aplicaciontest
              WHERE evaluado_id_evaluado = $1
              AND estado <> 'FINALIZADA'
@@ -82,28 +116,30 @@ app.post("/api/login", async (req, res) => {
 
         return res.status(500).json({
             ok: false,
-            mensaje: "Error al conectar con PostgreSQL."
+            mensaje: "Error al conectar con PostgreSQL.",
+            error: error.message
         });
     }
 });
 
-// CARGAR TEST ASIGNADO
+// ===============================
+// CARGAR TEST ACTUAL DE UNA APLICACIÓN
+// ===============================
 app.get("/api/test/:idAplicacion", async (req, res) => {
     const { idAplicacion } = req.params;
 
     try {
         const aplicacionResult = await pool.query(
             `SELECT 
-                a.idaplicacion,
-                a.estado,
-                a.fechainicio,
-                t.id_test,
-                t.tipo_test,
-                t.instrucciones
-             FROM aplicaciontest a
-             INNER JOIN tests_razonamiento t
-                ON a.testrazonamiento_id_test = t.id_test
-             WHERE a.idaplicacion = $1`,
+                idaplicacion,
+                estado,
+                fechainicio,
+                fechafin,
+                indice_test_actual,
+                fecha_inicio_test_actual,
+                fecha_fin_test_actual
+             FROM aplicaciontest
+             WHERE idaplicacion = $1`,
             [idAplicacion]
         );
 
@@ -114,7 +150,107 @@ app.get("/api/test/:idAplicacion", async (req, res) => {
             });
         }
 
-        const aplicacion = aplicacionResult.rows[0];
+        let aplicacion = aplicacionResult.rows[0];
+
+        const testsResult = await pool.query(
+            `SELECT 
+                att.orden,
+                t.id_test,
+                t.codigo,
+                t.nombre,
+                t.tiempo_limite,
+                t.instrucciones
+             FROM aplicaciontest_tests att
+             INNER JOIN tests_razonamiento t
+                ON t.id_test = att.test_id
+             WHERE att.aplicacion_id = $1
+             ORDER BY att.orden ASC`,
+            [idAplicacion]
+        );
+
+        if (testsResult.rows.length === 0) {
+            return res.json({
+                ok: false,
+                mensaje: "Esta aplicación no tiene tests asignados."
+            });
+        }
+
+        if (aplicacion.estado === "FINALIZADA") {
+            return res.json({
+                ok: false,
+                mensaje: "Esta aplicación ya fue finalizada."
+            });
+        }
+
+        if (aplicacion.fechainicio === null || aplicacion.estado === "PENDIENTE") {
+            const inicioResult = await pool.query(
+                `UPDATE aplicaciontest
+                 SET estado = 'EN_CURSO',
+                     fechainicio = COALESCE(fechainicio, NOW()),
+                     fechafin = NULL,
+                     indice_test_actual = COALESCE(indice_test_actual, 0),
+                     fecha_inicio_test_actual = COALESCE(fecha_inicio_test_actual, NOW()),
+                     fecha_fin_test_actual = NULL
+                 WHERE idaplicacion = $1
+                 RETURNING 
+                    estado,
+                    fechainicio,
+                    fechafin,
+                    indice_test_actual,
+                    fecha_inicio_test_actual,
+                    fecha_fin_test_actual`,
+                [idAplicacion]
+            );
+
+            aplicacion.estado = inicioResult.rows[0].estado;
+            aplicacion.fechainicio = inicioResult.rows[0].fechainicio;
+            aplicacion.fechafin = inicioResult.rows[0].fechafin;
+            aplicacion.indice_test_actual = inicioResult.rows[0].indice_test_actual;
+            aplicacion.fecha_inicio_test_actual = inicioResult.rows[0].fecha_inicio_test_actual;
+            aplicacion.fecha_fin_test_actual = inicioResult.rows[0].fecha_fin_test_actual;
+        }
+
+        let indiceActual = Number(aplicacion.indice_test_actual || 0);
+
+        if (indiceActual < 0 || indiceActual >= testsResult.rows.length) {
+            indiceActual = 0;
+
+            const resetResult = await pool.query(
+                `UPDATE aplicaciontest
+                 SET indice_test_actual = 0,
+                     fecha_inicio_test_actual = COALESCE(fecha_inicio_test_actual, NOW()),
+                     fecha_fin_test_actual = NULL
+                 WHERE idaplicacion = $1
+                 RETURNING indice_test_actual, fecha_inicio_test_actual, fecha_fin_test_actual`,
+                [idAplicacion]
+            );
+
+            aplicacion.indice_test_actual = resetResult.rows[0].indice_test_actual;
+            aplicacion.fecha_inicio_test_actual = resetResult.rows[0].fecha_inicio_test_actual;
+            aplicacion.fecha_fin_test_actual = resetResult.rows[0].fecha_fin_test_actual;
+        }
+
+        const testActual = testsResult.rows[indiceActual];
+        const tiempoMinutos = Number(testActual.tiempo_limite || 0);
+
+        if (tiempoMinutos <= 0) {
+            return res.json({
+                ok: false,
+                mensaje: "El test actual no tiene tiempo configurado."
+            });
+        }
+
+        const fechaInicioTestActual = aplicacion.fecha_inicio_test_actual || aplicacion.fechainicio;
+
+        const segundosTranscurridos = fechaInicioTestActual
+            ? Math.max(0, Math.floor((Date.now() - new Date(fechaInicioTestActual).getTime()) / 1000))
+            : 0;
+
+        const tiempoTotalSegundos = tiempoMinutos * 60;
+        const tiempoRestanteSegundos = Math.max(
+            0,
+            tiempoTotalSegundos - segundosTranscurridos
+        );
 
         const itemsResult = await pool.query(
             `SELECT 
@@ -128,34 +264,32 @@ app.get("/api/test/:idAplicacion", async (req, res) => {
              FROM items_razonamiento
              WHERE id_test_fk = $1
              ORDER BY numero ASC`,
-            [aplicacion.id_test]
+            [testActual.id_test]
         );
-
-        let tiempoMinutos = 0;
-
-        if (aplicacion.tipo_test === "A") {
-            tiempoMinutos = 10;
-        } else if (aplicacion.tipo_test === "B") {
-            tiempoMinutos = 12;
-        }
-
-        if (aplicacion.estado === "PENDIENTE") {
-            await pool.query(
-                `UPDATE aplicaciontest
-                 SET estado = 'EN_CURSO',
-                     fechainicio = NOW(),
-                     fechafin = NULL
-                 WHERE idaplicacion = $1`,
-                [idAplicacion]
-            );
-        }
 
         return res.json({
             ok: true,
+
             idAplicacion: aplicacion.idaplicacion,
-            tipoTest: aplicacion.tipo_test,
+            estado: aplicacion.estado,
+
+            idTest: testActual.id_test,
+            codigoTest: testActual.codigo,
+            tipoTest: testActual.codigo,
+            nombreTest: testActual.nombre,
+
+            indiceTestActual: indiceActual,
+            totalTests: testsResult.rows.length,
+            haySiguienteTest: indiceActual < testsResult.rows.length - 1,
+
             tiempoMinutos: tiempoMinutos,
-            instrucciones: aplicacion.instrucciones,
+            tiempoTotalSegundos: tiempoTotalSegundos,
+            tiempoRestanteSegundos: tiempoRestanteSegundos,
+
+            fechaInicio: aplicacion.fechainicio,
+            fechaInicioTestActual: fechaInicioTestActual,
+
+            instrucciones: testActual.instrucciones,
             items: itemsResult.rows
         });
 
@@ -164,67 +298,58 @@ app.get("/api/test/:idAplicacion", async (req, res) => {
 
         return res.status(500).json({
             ok: false,
-            mensaje: "Error al cargar el test."
+            mensaje: "Error al cargar el test.",
+            error: error.message
         });
     }
 });
 
+// ===============================
 // CALCULAR Y GUARDAR RESULTADO
+// ===============================
 async function calcularYGuardarResultado(client, idAplicacion) {
     const resultado = await client.query(
         `SELECT
-            t.tipo_test,
-
+            t.id_test,
+            t.codigo,
+            t.nombre,
             COUNT(i.id_item) FILTER (
                 WHERE r.respuesta_seleccionada = i.respuesta_correcta
             ) AS aciertos
-
-         FROM aplicaciontest a
-
+         FROM aplicaciontest_tests att
          INNER JOIN tests_razonamiento t
-            ON a.testrazonamiento_id_test = t.id_test
-
+            ON t.id_test = att.test_id
          INNER JOIN items_razonamiento i
             ON i.id_test_fk = t.id_test
-
          LEFT JOIN aplicacion_respuestas r
-            ON r.aplicaciontest_idaplicacion = a.idaplicacion
+            ON r.aplicaciontest_idaplicacion = att.aplicacion_id
            AND r.numero_item = i.numero
-
-         WHERE a.idaplicacion = $1
-
-         GROUP BY t.tipo_test`,
+         WHERE att.aplicacion_id = $1
+         GROUP BY t.id_test, t.codigo, t.nombre, att.orden
+         ORDER BY att.orden ASC`,
         [idAplicacion]
     );
 
     if (resultado.rows.length === 0) {
-        throw new Error("No se encontró la aplicación o el test no tiene ítems.");
+        throw new Error("No se encontró la aplicación o los tests no tienen ítems.");
     }
-
-    const tipoTest = resultado.rows[0].tipo_test;
-    const aciertos = Number(resultado.rows[0].aciertos || 0);
 
     let r1 = 0;
     let r2 = 0;
-    let rt = 0;
+    let aciertos = 0;
 
-    /*
-     * IMPORTANTE:
-     * Si solo se aplicó Forma A, NO se guarda RT.
-     * Si solo se aplicó Forma B, NO se guarda RT.
-     * Como la BD tiene NOT NULL, se guarda 0 en RT.
-     */
-    if (tipoTest === "A") {
-        r1 = aciertos;
-        r2 = 0;
-        rt = 0;
-    } else if (tipoTest === "B") {
-        r1 = 0;
-        r2 = aciertos;
-        rt = 0;
-    } else {
-        throw new Error("Tipo de test no válido.");
+    for (const fila of resultado.rows) {
+        const puntos = Number(fila.aciertos || 0);
+        aciertos += puntos;
+
+        if (esRazonamientoA(fila)) {
+            r1 += puntos;
+        } else if (esRazonamientoB(fila)) {
+            r2 += puntos;
+        }
     }
+
+    const rt = r1 + r2;
 
     await client.query(
         `INSERT INTO resultados_razonamiento
@@ -243,7 +368,6 @@ async function calcularYGuardarResultado(client, idAplicacion) {
             )
          VALUES
             ($1, $2, $3, $4, $5, NULL, NULL, NULL, NULL, NULL, NULL)
-
          ON CONFLICT (aplicacion_idaplicacion)
          DO UPDATE SET
             aciertos = EXCLUDED.aciertos,
@@ -266,7 +390,9 @@ async function calcularYGuardarResultado(client, idAplicacion) {
     );
 }
 
+// ===============================
 // RECALCULAR RESULTADO MANUALMENTE
+// ===============================
 app.get("/api/recalcular/:idAplicacion", async (req, res) => {
     const { idAplicacion } = req.params;
 
@@ -301,7 +427,9 @@ app.get("/api/recalcular/:idAplicacion", async (req, res) => {
     }
 });
 
-// GUARDAR RESPUESTAS
+// ===============================
+// GUARDAR RESPUESTAS DEL TEST ACTUAL
+// ===============================
 app.post("/api/respuestas", async (req, res) => {
     const { idAplicacion, respuestas } = req.body;
 
@@ -318,7 +446,7 @@ app.post("/api/respuestas", async (req, res) => {
         await client.query("BEGIN");
 
         for (const r of respuestas) {
-            const respuestaSeleccionada = r.respuestaSeleccionada || null;
+            const respuestaSeleccionada = normalizarRespuesta(r.respuestaSeleccionada);
             const estadoRespuesta = respuestaSeleccionada ? "RESPONDIDA" : "OMITIDA";
 
             await client.query(
@@ -332,7 +460,6 @@ app.post("/api/respuestas", async (req, res) => {
                     )
                  VALUES
                     ($1, $2, $3, $4, NOW())
-
                  ON CONFLICT (aplicaciontest_idaplicacion, numero_item)
                  DO UPDATE SET
                     respuesta_seleccionada = EXCLUDED.respuesta_seleccionada,
@@ -347,9 +474,61 @@ app.post("/api/respuestas", async (req, res) => {
             );
         }
 
+        const aplicacionResult = await client.query(
+            `SELECT 
+                indice_test_actual
+             FROM aplicaciontest
+             WHERE idaplicacion = $1`,
+            [idAplicacion]
+        );
+
+        if (aplicacionResult.rows.length === 0) {
+            throw new Error("Aplicación no encontrada.");
+        }
+
+        const totalTestsResult = await client.query(
+            `SELECT COUNT(*) AS total
+             FROM aplicaciontest_tests
+             WHERE aplicacion_id = $1`,
+            [idAplicacion]
+        );
+
+        const indiceActual = Number(aplicacionResult.rows[0].indice_test_actual || 0);
+        const totalTests = Number(totalTestsResult.rows[0].total || 0);
+
+        if (totalTests === 0) {
+            throw new Error("La aplicación no tiene tests asignados.");
+        }
+
+        if (indiceActual < totalTests - 1) {
+            const nuevoIndice = indiceActual + 1;
+
+            await client.query(
+                `UPDATE aplicaciontest
+                 SET estado = 'EN_CURSO',
+                     indice_test_actual = $2,
+                     fecha_inicio_test_actual = NOW(),
+                     fecha_fin_test_actual = NULL,
+                     fechafin = NULL
+                 WHERE idaplicacion = $1`,
+                [idAplicacion, nuevoIndice]
+            );
+
+            await client.query("COMMIT");
+
+            return res.json({
+                ok: true,
+                finalizada: false,
+                siguienteTest: true,
+                indiceTestActual: nuevoIndice,
+                mensaje: "Respuestas guardadas. Continúe con el siguiente test."
+            });
+        }
+
         await client.query(
             `UPDATE aplicaciontest
              SET estado = 'FINALIZADA',
+                 fecha_fin_test_actual = NOW(),
                  fechafin = NOW()
              WHERE idaplicacion = $1`,
             [idAplicacion]
@@ -361,6 +540,8 @@ app.post("/api/respuestas", async (req, res) => {
 
         return res.json({
             ok: true,
+            finalizada: true,
+            siguienteTest: false,
             mensaje: "Respuestas y resultado guardados correctamente."
         });
 
@@ -370,7 +551,8 @@ app.post("/api/respuestas", async (req, res) => {
 
         return res.status(500).json({
             ok: false,
-            mensaje: "Error al guardar respuestas o calcular resultado."
+            mensaje: "Error al guardar respuestas o calcular resultado.",
+            error: error.message
         });
 
     } finally {
@@ -378,7 +560,29 @@ app.post("/api/respuestas", async (req, res) => {
     }
 });
 
-// Probar conexión y levantar servidor
+// ===============================
+// ESTADO DEL SERVIDOR
+// ===============================
+app.get("/api/health", async (req, res) => {
+    try {
+        const result = await pool.query("SELECT NOW() AS fecha");
+        return res.json({
+            ok: true,
+            mensaje: "Servidor funcionando.",
+            fecha: result.rows[0].fecha
+        });
+    } catch (error) {
+        return res.status(500).json({
+            ok: false,
+            mensaje: "Error de conexión con PostgreSQL.",
+            error: error.message
+        });
+    }
+});
+
+// ===============================
+// PROBAR CONEXIÓN Y LEVANTAR SERVIDOR
+// ===============================
 pool.query("SELECT NOW()")
     .then(() => {
         console.log("Conexión a PostgreSQL correcta.");
